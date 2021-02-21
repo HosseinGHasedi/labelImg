@@ -286,6 +286,14 @@ class MainWindow(QMainWindow, WindowMixin):
                          'Ctrl+A', 'hide', getStr('showAllBoxDetail'),
                          enabled=False)
 
+        enableRotation = action('&Enable\nRotation Aware', partial(self.toggleRotationAware, True),
+                         'Ctrl+R', 'rotation-aware', getStr('enableRotationAware'),
+                         enabled=False)
+
+        disableRotation = action('&Disable\nRotation Aware', partial(self.toggleRotationAware, False),
+                                'Ctrl+Shift+R', 'rotation-aware', getStr('disableRotationAware'),
+                                enabled=False)
+
         help = action(getStr('tutorial'), self.showTutorialDialog, None, 'help', getStr('tutorialDetail'))
         showInfo = action(getStr('info'), self.showInfoDialog, None, 'help', getStr('info'))
 
@@ -405,6 +413,7 @@ class MainWindow(QMainWindow, WindowMixin):
             labels, advancedMode, None,
             hideAll, showAll, None,
             zoomIn, zoomOut, zoomOrg, None,
+            enableRotation, disableRotation, None,
             fitWindow, fitWidth))
 
         self.menus.file.aboutToShow.connect(self.updateFileMenu)
@@ -423,7 +432,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.advanced = (
             open, opendir, changeSavedir, openNextImg, openPrevImg, save, save_format, None,
             createMode, editMode, None,
-            hideAll, showAll)
+            hideAll, showAll, enableRotation, disableRotation)
 
         self.statusBar().showMessage('%s started.' % __appname__)
         self.statusBar().show()
@@ -1028,6 +1037,9 @@ class MainWindow(QMainWindow, WindowMixin):
     def togglePolygons(self, value):
         for item, shape in self.itemsToShapes.items():
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
+
+    def toggleRotationAware(self, value):
+        self.rotationAware = value
 
     def loadFile(self, filePath=None):
         """Load the specified file, or the last opened file if None."""
