@@ -505,6 +505,9 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.filePath and os.path.isdir(self.filePath):
             self.openDirDialog(dirpath=self.filePath, silent=True)
 
+        # Add a value for rotation aware state
+        self.rotationAware = False
+
     def keyReleaseEvent(self, event):
         if event.key() == Qt.Key_Control:
             self.canvas.setDrawingShapeToSquare(False)
