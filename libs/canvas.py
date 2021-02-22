@@ -67,6 +67,10 @@ class Canvas(QWidget):
         #initialisation for panning
         self.pan_initial_pos = QPoint()
 
+        self.rotationAware = False
+        self.mouseLeftButtonDown = False
+        self.moveAction = True
+
     def setDrawingColor(self, qColor):
         self.drawingLineColor = qColor
         self.drawingRectColor = qColor
@@ -96,6 +100,9 @@ class Canvas(QWidget):
             self.deSelectShape()
         self.prevPoint = QPointF()
         self.repaint()
+
+    def setRotationAware(self, value):
+        self.rotationAware = value
 
     def unHighlight(self):
         if self.hShape:
@@ -179,10 +186,13 @@ class Canvas(QWidget):
                 self.shapeMoved.emit()
                 self.repaint()
             elif self.selectedShape and self.prevPoint:
-                self.overrideCursor(CURSOR_MOVE)
-                self.boundedMoveShape(self.selectedShape, pos)
-                self.shapeMoved.emit()
-                self.repaint()
+                if self.moveAction:
+                    self.overrideCursor(CURSOR_MOVE)
+                    self.boundedMoveShape(self.selectedShape, pos)
+                    self.shapeMoved.emit()
+                    self.repaint()
+                else:
+                    self.boundedRotateShape(self.selectedShape, pos)
             else:
                 #pan
                 delta_x = pos.x() - self.pan_initial_pos.x()
@@ -228,20 +238,75 @@ class Canvas(QWidget):
             self.hVertex, self.hShape = None, None
             self.overrideCursor(CURSOR_DEFAULT)
 
+    def rotateShape(self, shape, pos):
+        if self.outOfPixmap(pos):
+            return False  # No need to move
+        o1 = pos + self.offsets[0]
+        if self.outOfPixmap(o1):
+            pos -= QPointF(min(0, o1.x()), min(0, o1.y()))
+        o2 = pos + self.offsets[1]
+        if self.outOfPixmap(o2):
+            pos += QPointF(min(0, self.pixmap.width() - o2.x()),
+                           min(0, self.pixmap.height() - o2.y()))
+
+        shapeCenter = (shape.points[0]+shape.points[2])/2
+        dp = pos - self.prevPoint
+        if dp:
+            print("before func")
+            self.rotateBy(shape, shapeCenter, pos,  self.prevPoint)
+            self.prevPoint = pos
+            return True
+        return False
+
+    def boundedRotateShape(self, shape, pos):
+        if self.outOfPixmap(pos):
+            return False  # No need to move
+        o1 = pos + self.offsets[0]
+        if self.outOfPixmap(o1):
+            pos -= QPointF(min(0, o1.x()), min(0, o1.y()))
+        o2 = pos + self.offsets[1]
+        if self.outOfPixmap(o2):
+            pos += QPointF(min(0, self.pixmap.width() - o2.x()),
+                           min(0, self.pixmap.height() - o2.y()))
+        # The next line tracks the new position of the cursor
+        # relative to the shape, but also results in making it
+        # a bit "shaky" when nearing the border and allows it to
+        # go outside of the shape's area for some reason. XXX
+        #self.calculateOffsets(self.selectedShape, pos)
+        dp = pos - self.prevPoint
+        shapeCenter = (shape.points[0] + shape.points[2]) / 2
+        if dp:
+            shape.rotateBy(shapeCenter, pos,  self.prevPoint)
+            self.repaint()
+            self.prevPoint = pos
+            return True
+        return False
+
+
+    def performSingleClickAction(self, pos):
+        if not self.mouseLeftButtonDown and not (self.isVisible(self.selectedShape) and self.selectedShape.containsPoint(pos)):
+            self.deSelectShape()
+
     def mousePressEvent(self, ev):
         pos = self.transformPos(ev.pos())
 
         if ev.button() == Qt.LeftButton:
+            self.mouseLeftButtonDown = True
             if self.drawing():
                 self.handleDrawing(pos)
             else:
-                selection = self.selectShapePoint(pos)
-                self.prevPoint = pos
+                if self.rotationAware and self.selectedShape:
+                        QTimer.singleShot(100, lambda: self.performSingleClickAction(pos))
+                        self.moveAction = self.selectedShape.containsPoint(pos)
 
-                if selection is None:
-                    #pan
-                    QApplication.setOverrideCursor(QCursor(Qt.OpenHandCursor))
-                    self.pan_initial_pos = pos
+                else:
+                    selection = self.selectShapePoint(pos)
+                    self.prevPoint = pos
+
+                    if selection is None:
+                        #pan
+                        QApplication.setOverrideCursor(QCursor(Qt.OpenHandCursor))
+                        self.pan_initial_pos = pos
 
         elif ev.button() == Qt.RightButton and self.editing():
             self.selectShapePoint(pos)
@@ -258,11 +323,15 @@ class Canvas(QWidget):
                 self.selectedShapeCopy = None
                 self.repaint()
         elif ev.button() == Qt.LeftButton and self.selectedShape:
+            self.mouseLeftButtonDown = False
+            self.moveAction = True
             if self.selectedVertex():
                 self.overrideCursor(CURSOR_POINT)
             else:
                 self.overrideCursor(CURSOR_GRAB)
         elif ev.button() == Qt.LeftButton:
+            self.mouseLeftButtonDown = False
+            self.moveAction = True
             pos = self.transformPos(ev.pos())
             if self.drawing():
                 self.handleDrawing(pos)

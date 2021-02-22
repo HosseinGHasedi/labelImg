@@ -173,6 +173,45 @@ class Shape(object):
     def moveBy(self, offset):
         self.points = [p + offset for p in self.points]
 
+    def rotateBy(self, center, pos,  prev_pos):
+        A1 = center.y() - pos.y()
+        B1 = pos.x() - center.x()
+        C1 = -((A1 * center.x()) + (B1 * center.y()))
+
+        A2_temp = center.y() - prev_pos.y()
+        B2_temp = prev_pos.x() - center.x()
+        A2 = - B2_temp
+        B2 = A2_temp
+        C2 = -((A2 * prev_pos.x()) + (B2 * prev_pos.y()))
+
+        P_isc = QPointF(((B2 * C1 - C2 * B1) / (B1 * A2 - B2 * A1)),
+                        ((A1 * C2 - A2 * C1) / (B1 * A2 - B2 * A1)))  # intersection point
+
+        import math
+        center_prevpos_distance = (math.sqrt(A2_temp * A2_temp + B2_temp * B2_temp))
+
+        center_isc_A = center.x() - P_isc.x()
+        center_isc_B = center.y() - P_isc.y()
+        center_isc_distance = (math.sqrt(center_isc_A * center_isc_A + center_isc_B * center_isc_B))
+
+        prevpos_isc_A = prev_pos.x() - P_isc.x()
+        prevpos_isc_B = prev_pos.y() - P_isc.y()
+        prevpos_isc_distance = (math.sqrt(prevpos_isc_A * prevpos_isc_A + prevpos_isc_B * prevpos_isc_B))
+
+        sin = prevpos_isc_distance / center_isc_distance
+        cos = center_prevpos_distance / center_isc_distance
+
+        self.points = [(self.rotatePoint(p, sin, cos, center)) for p in self.points]
+
+
+    def rotatePoint(self, point, sin , cos, center):
+        px = point.x() - center.x()
+        py = point.y() - center.y()
+        xnew = (px * cos + py * sin) + center.x()
+        ynew = (-px * sin + py * cos) + center.y()
+
+        return QPointF(xnew, ynew)
+
     def moveVertexBy(self, i, offset):
         self.points[i] = self.points[i] + offset
 

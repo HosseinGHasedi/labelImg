@@ -287,11 +287,11 @@ class MainWindow(QMainWindow, WindowMixin):
                          enabled=False)
 
         enableRotation = action('&Enable\nRotation Aware', partial(self.toggleRotationAware, True),
-                         'Ctrl+R', 'rotation-aware', getStr('enableRotationAware'),
+                         'R', 'rotation-aware', getStr('enableRotationAware'),
                          enabled=False)
 
         disableRotation = action('&Disable\nRotation Aware', partial(self.toggleRotationAware, False),
-                                'Ctrl+Shift+R', 'rotation-aware', getStr('disableRotationAware'),
+                                'R', 'rotation-aware', getStr('disableRotationAware'),
                                 enabled=False)
 
         help = action(getStr('tutorial'), self.showTutorialDialog, None, 'help', getStr('tutorialDetail'))
@@ -366,11 +366,13 @@ class MainWindow(QMainWindow, WindowMixin):
                               zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
                               fitWindow=fitWindow, fitWidth=fitWidth,
                               zoomActions=zoomActions,
+                              enableRotation=enableRotation,
+                              disableRotation=disableRotation,
                               fileMenuActions=(
                                   open, opendir, save, saveAs, close, resetAll, quit),
                               beginner=(), advanced=(),
                               editMenu=(edit, copy, delete,
-                                        None, color1, self.drawSquaresOption),
+                                        None, color1, self.drawSquaresOption,None, enableRotation, disableRotation),
                               beginnerContext=(create, edit, copy, delete),
                               advancedContext=(createMode, editMode, edit, copy,
                                                delete, shapeLineColor, shapeFillColor),
@@ -413,7 +415,6 @@ class MainWindow(QMainWindow, WindowMixin):
             labels, advancedMode, None,
             hideAll, showAll, None,
             zoomIn, zoomOut, zoomOrg, None,
-            enableRotation, disableRotation, None,
             fitWindow, fitWidth))
 
         self.menus.file.aboutToShow.connect(self.updateFileMenu)
@@ -432,7 +433,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.advanced = (
             open, opendir, changeSavedir, openNextImg, openPrevImg, save, save_format, None,
             createMode, editMode, None,
-            hideAll, showAll, enableRotation, disableRotation)
+            hideAll, showAll,None,
+            enableRotation, disableRotation)
 
         self.statusBar().showMessage('%s started.' % __appname__)
         self.statusBar().show()
@@ -568,6 +570,8 @@ class MainWindow(QMainWindow, WindowMixin):
         if value:
             self.actions.createMode.setEnabled(True)
             self.actions.editMode.setEnabled(False)
+            self.actions.enableRotation.setEnabled(True)
+            self.actions.disableRotation.setEnabled(False)
             self.dock.setFeatures(self.dock.features() | self.dockFeatures)
         else:
             self.dock.setFeatures(self.dock.features() ^ self.dockFeatures)
@@ -1040,6 +1044,9 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def toggleRotationAware(self, value):
         self.rotationAware = value
+        self.actions.enableRotation.setEnabled(not value)
+        self.actions.disableRotation.setEnabled(value)
+        self.canvas.setRotationAware(value)
 
     def loadFile(self, filePath=None):
         """Load the specified file, or the last opened file if None."""
