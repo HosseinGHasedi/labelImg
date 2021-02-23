@@ -238,26 +238,6 @@ class Canvas(QWidget):
             self.hVertex, self.hShape = None, None
             self.overrideCursor(CURSOR_DEFAULT)
 
-    def rotateShape(self, shape, pos):
-        if self.outOfPixmap(pos):
-            return False  # No need to move
-        o1 = pos + self.offsets[0]
-        if self.outOfPixmap(o1):
-            pos -= QPointF(min(0, o1.x()), min(0, o1.y()))
-        o2 = pos + self.offsets[1]
-        if self.outOfPixmap(o2):
-            pos += QPointF(min(0, self.pixmap.width() - o2.x()),
-                           min(0, self.pixmap.height() - o2.y()))
-
-        shapeCenter = (shape.points[0]+shape.points[2])/2
-        dp = pos - self.prevPoint
-        if dp:
-            print("before func")
-            self.rotateBy(shape, shapeCenter, pos,  self.prevPoint)
-            self.prevPoint = pos
-            return True
-        return False
-
     def boundedRotateShape(self, shape, pos):
         if self.outOfPixmap(pos):
             return False  # No need to move
@@ -268,20 +248,15 @@ class Canvas(QWidget):
         if self.outOfPixmap(o2):
             pos += QPointF(min(0, self.pixmap.width() - o2.x()),
                            min(0, self.pixmap.height() - o2.y()))
-        # The next line tracks the new position of the cursor
-        # relative to the shape, but also results in making it
-        # a bit "shaky" when nearing the border and allows it to
-        # go outside of the shape's area for some reason. XXX
-        #self.calculateOffsets(self.selectedShape, pos)
+
         dp = pos - self.prevPoint
         shapeCenter = (shape.points[0] + shape.points[2]) / 2
         if dp:
-            shape.rotateBy(shapeCenter, pos,  self.prevPoint)
+            shape.rotateBy(shapeCenter, pos,  self.prevPoint, self.outOfPixmap)
             self.repaint()
             self.prevPoint = pos
             return True
         return False
-
 
     def performSingleClickAction(self, pos):
         if not self.mouseLeftButtonDown and not (self.isVisible(self.selectedShape) and self.selectedShape.containsPoint(pos)):
@@ -296,8 +271,12 @@ class Canvas(QWidget):
                 self.handleDrawing(pos)
             else:
                 if self.rotationAware and self.selectedShape:
-                        QTimer.singleShot(100, lambda: self.performSingleClickAction(pos))
-                        self.moveAction = self.selectedShape.containsPoint(pos)
+                    QTimer.singleShot(200, lambda: self.performSingleClickAction(pos))
+                    self.moveAction = self.selectedShape.containsPoint(pos)
+
+                    if self.selectedShape.containsPoint(pos):
+                        self.calculateOffsets(self.selectedShape, pos)
+                    self.prevPoint = pos
 
                 else:
                     selection = self.selectShapePoint(pos)

@@ -11,6 +11,7 @@ except ImportError:
 
 from libs.utils import distance
 import sys
+import numpy as np
 
 DEFAULT_LINE_COLOR = QColor(0, 255, 0, 128)
 DEFAULT_FILL_COLOR = QColor(255, 0, 0, 128)
@@ -99,7 +100,7 @@ class Shape(object):
             # Uncommenting the following line will draw 2 paths
             # for the 1st vertex, and make it non-filled, which
             # may be desirable.
-            #self.drawVertex(vrtx_path, 0)
+            # self.drawVertex(vrtx_path, 0)
 
             for i, p in enumerate(self.points):
                 line_path.lineTo(p)
@@ -124,9 +125,9 @@ class Shape(object):
                     font.setPointSize(self.labelFontSize)
                     font.setBold(True)
                     painter.setFont(font)
-                    if(self.label == None):
+                    if (self.label == None):
                         self.label = ""
-                    if(min_y < min_y_label):
+                    if (min_y < min_y_label):
                         min_y += min_y_label
                     painter.drawText(min_x, min_y, self.label)
 
@@ -173,38 +174,29 @@ class Shape(object):
     def moveBy(self, offset):
         self.points = [p + offset for p in self.points]
 
-    def rotateBy(self, center, pos,  prev_pos):
-        A1 = center.y() - pos.y()
-        B1 = pos.x() - center.x()
-        C1 = -((A1 * center.x()) + (B1 * center.y()))
+    def rotateBy(self, center, pos, prev_pos, outOfPixmap):
+        pos_np = np.array([pos.x(), pos.y()])
+        prvpos_np = np.array([prev_pos.x(), prev_pos.y()])
+        center_np = np.array([center.x(), center.y()])
 
-        A2_temp = center.y() - prev_pos.y()
-        B2_temp = prev_pos.x() - center.x()
-        A2 = - B2_temp
-        B2 = A2_temp
-        C2 = -((A2 * prev_pos.x()) + (B2 * prev_pos.y()))
+        center_pos = pos_np-center_np
+        center_prevpos = prvpos_np-center_np
 
-        P_isc = QPointF(((B2 * C1 - C2 * B1) / (B1 * A2 - B2 * A1)),
-                        ((A1 * C2 - A2 * C1) / (B1 * A2 - B2 * A1)))  # intersection point
+        dot_product = np.dot(center_pos, center_prevpos) #dot product = ||A||*||B||*cos(theta)
+        outer_product = np.cross(center_pos, center_prevpos) #cross product = ||A||*||B||*sin(theta)
+        norms_product = (np.linalg.norm(center_pos) * np.linalg.norm(center_prevpos)) # norms_product = ||A||*||B||
 
-        import math
-        center_prevpos_distance = (math.sqrt(A2_temp * A2_temp + B2_temp * B2_temp))
+        cos = dot_product / norms_product
+        sin = outer_product / norms_product
 
-        center_isc_A = center.x() - P_isc.x()
-        center_isc_B = center.y() - P_isc.y()
-        center_isc_distance = (math.sqrt(center_isc_A * center_isc_A + center_isc_B * center_isc_B))
+        pints_temp = [(self.rotatePoint(p, sin, cos, center)) for p in self.points]
+        for p in pints_temp:
+            if outOfPixmap(p):
+                break
+        else:
+            self.points = pints_temp
 
-        prevpos_isc_A = prev_pos.x() - P_isc.x()
-        prevpos_isc_B = prev_pos.y() - P_isc.y()
-        prevpos_isc_distance = (math.sqrt(prevpos_isc_A * prevpos_isc_A + prevpos_isc_B * prevpos_isc_B))
-
-        sin = prevpos_isc_distance / center_isc_distance
-        cos = center_prevpos_distance / center_isc_distance
-
-        self.points = [(self.rotatePoint(p, sin, cos, center)) for p in self.points]
-
-
-    def rotatePoint(self, point, sin , cos, center):
+    def rotatePoint(self, point, sin, cos, center):
         px = point.x() - center.x()
         py = point.y() - center.y()
         xnew = (px * cos + py * sin) + center.x()
