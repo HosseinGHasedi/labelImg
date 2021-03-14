@@ -845,7 +845,9 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.comboBox.update_items(uniqueTextList)
 
-    def saveLabels(self, annotationFilePath):
+    def saveLabels(self, annotationFilePath, rotationAware):
+        print("save labels")
+        print(rotationAware)
         annotationFilePath = ustr(annotationFilePath)
         if self.labelFile is None:
             self.labelFile = LabelFile()
@@ -871,7 +873,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 if annotationFilePath[-4:].lower() != ".txt":
                     annotationFilePath += TXT_EXT
                 self.labelFile.saveYoloFormat(annotationFilePath, shapes, self.filePath, self.imageData, self.labelHist,
-                                              self.lineColor.getRgb(), self.fillColor.getRgb())
+                                              self.lineColor.getRgb(), self.fillColor.getRgb(), rotationAware=rotationAware)
             elif self.labelFileFormat == LabelFileFormat.CREATE_ML:
                 if annotationFilePath[-5:].lower() != ".json":
                     annotationFilePath += JSON_EXT
@@ -1424,7 +1426,8 @@ class MainWindow(QMainWindow, WindowMixin):
         return ''
 
     def _saveFile(self, annotationFilePath):
-        if annotationFilePath and self.saveLabels(annotationFilePath):
+        print(self.rotationAware)
+        if annotationFilePath and self.saveLabels(annotationFilePath, self.rotationAware):
             self.setClean()
             self.statusBar().showMessage('Saved to  %s' % annotationFilePath)
             self.statusBar().show()

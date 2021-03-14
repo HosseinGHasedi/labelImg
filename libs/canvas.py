@@ -431,28 +431,43 @@ class Canvas(QWidget):
             opposite_point_index = (index + 2) % 4
             opposite_point = shape[opposite_point_index]
 
-            min_size = min(abs(pos.x() - opposite_point.x()), abs(pos.y() - opposite_point.y()))
-            directionX = -1 if pos.x() - opposite_point.x() < 0 else 1
-            directionY = -1 if pos.y() - opposite_point.y() < 0 else 1
-            shiftPos = QPointF(opposite_point.x() + directionX * min_size - point.x(),
-                               opposite_point.y() + directionY * min_size - point.y())
-        else:
-            shiftPos = pos - point
+            Ad = point.y() - opposite_point.y()
+            Bd = opposite_point.x() - point.x()
+            Cd = -((Ad * opposite_point.x()) + (Bd * opposite_point.y()))
 
-        shape.moveVertexBy(index, shiftPos)
+            x_sqr = ((-Cd - (Bd*pos.y()))/Ad) if Ad!=0 else pos.x()
+            y_sqr = ((-Cd - (Ad*pos.x()))/Bd) if Bd!=0 else pos.y()
 
+            if abs(x_sqr - opposite_point.x()) < abs(y_sqr - opposite_point.y()):
+                pos = QPointF(x_sqr, ((-Cd - (Ad * x_sqr))/Bd) if Bd!=0 else pos.y())
+            else:
+                pos = QPointF(((-Cd-(Bd*y_sqr))/Ad) if Ad!=0 else pos.x(), y_sqr)
+
+        shiftPos = pos - point
+
+        opposite_point_index = (index + 2) % 4
         lindex = (index + 1) % 4
         rindex = (index + 3) % 4
-        lshift = None
-        rshift = None
-        if index % 2 == 0:
-            rshift = QPointF(shiftPos.x(), 0)
-            lshift = QPointF(0, shiftPos.y())
-        else:
-            lshift = QPointF(shiftPos.x(), 0)
-            rshift = QPointF(0, shiftPos.y())
-        shape.moveVertexBy(rindex, rshift)
-        shape.moveVertexBy(lindex, lshift)
+
+        Al = shape[lindex].y() - shape[opposite_point_index].y()
+        Bl = shape[opposite_point_index].x() - shape[lindex].x()
+        Cl = -((Al * shape[opposite_point_index].x()) + (Bl * shape[opposite_point_index].y()))
+
+        Ar = shape[rindex].y() - shape[opposite_point_index].y()
+        Br = shape[opposite_point_index].x() - shape[rindex].x()
+        Cr = -((Ar * shape[opposite_point_index].x()) + (Br * shape[opposite_point_index].y()))
+
+        if ((Ar*Ar)+(Br*Br)) != 0 and ((Al*Al)+(Bl*Bl)) != 0:
+            posl = QPointF((((Bl * Bl * pos.x()) - (Al * Bl * pos.y()) - Al * Cl) / ((Al * Al) + (Bl * Bl))),
+                           (((Al * Al * pos.y()) - (Al * Bl * pos.x()) - Bl * Cl) / ((Al * Al) + (Bl * Bl))))
+
+            posr = QPointF((((Br* Br*pos.x())-(Ar*Br*pos.y())-Ar*Cr) / ((Ar*Ar)+(Br*Br))),
+                            (((Ar*Ar*pos.y())-(Ar*Br*pos.x())-Br*Cr)/((Ar*Ar)+(Br*Br))))
+
+            shape[lindex] = posl
+            shape[rindex] = posr
+            shape.moveVertexBy(index, shiftPos)
+
 
     def boundedMoveShape(self, shape, pos):
         if self.outOfPixmap(pos):

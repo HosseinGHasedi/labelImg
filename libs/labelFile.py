@@ -86,7 +86,9 @@ class LabelFile(object):
         return
 
     def saveYoloFormat(self, filename, shapes, imagePath, imageData, classList,
-                            lineColor=None, fillColor=None, databaseSrc=None):
+                            lineColor=None, fillColor=None, databaseSrc=None, rotationAware=False):
+        print("saveYoloFormat")
+        print(rotationAware)
         imgFolderPath = os.path.dirname(imagePath)
         imgFolderName = os.path.split(imgFolderPath)[-1]
         imgFileName = os.path.basename(imagePath)
@@ -110,9 +112,9 @@ class LabelFile(object):
             # Add Chris
             difficult = int(shape['difficult'])
             bndbox = LabelFile.convertPoints2BndBox(points)
-            writer.addBndBox(bndbox[0], bndbox[1], bndbox[2], bndbox[3], label, difficult)
-
-        writer.save(targetFile=filename, classList=classList)
+            writer.addBndBox(points, label, difficult)
+        print(rotationAware)
+        writer.save(targetFile=filename, classList=classList, rotationAware=rotationAware)
         return
 
     def toggleVerify(self):
